@@ -1,5 +1,0 @@
-export { default as Game } from "./Game"
-export { default as Figure } from "./Figure"
-export { default as Board} from "./Board"
-export { default as Position } from "./Position"
-export { default as AvailableMoves } from "./AvailableMoves"
