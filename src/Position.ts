@@ -31,33 +31,36 @@ export class Position {
 
     private takeoverCoord: CoordinateInterface | null = null
 
-    private allAvailableMoves: Array<MoveInterface> = []
+    private allAvailableMoves: Array<MoveInterface>
+
+    private baseAvailableMoves: Array<MoveInterface>
+
+    private attackedCoords: Array<CoordinateInterface>
 
     private constructor() {}
 
     static fromFen(fen: string): Position {
         let position = new Position()
         position.setFen(fen)
-        position.buildAvailableMoves()
         return position
     }
 
     private setFen(fen: string) {
         this.board = {
-            a: [],
-            b: [],
-            c: [],
-            d: [],
-            e: [],
-            f: [],
-            g: [],
-            h: [],
-            i: [],
-            j: []
+            1: {},
+            2: {},
+            3: {},
+            4: {},
+            5: {},
+            6: {},
+            7: {},
+            8: {},
+            9: {},
+            10: {}
         }
-        for (let columnName of ColumnNames) {
-            for (let y = 0; y <= 9; y++) {
-                this.board[columnName].push({empty: true})
+        for (let x = 1; x <= 10; x++) {
+            for (let y = 1; y <= 10; y++) {
+                this.board[x][y] = {empty: true, figure: Figure.None, color: Color.None}
             }
         }
 
@@ -72,16 +75,16 @@ export class Position {
             throw new Error("Bad FEN: " + fen)
         }
 
-        for (let rowIndex = 0; rowIndex <= 9; rowIndex++) {
-            let rowString = positionRowsArr[9 - rowIndex]
+        for (let rowIndex = 1; rowIndex <= 10; rowIndex++) {
+            let rowString = positionRowsArr[10 - rowIndex]
             if (rowString === "10") {
                 // empty row
                 continue
             }
-            let cellIndex = 0
+            let cellIndex = 1
             for (let indexInRowString = 0; indexInRowString < rowString.length; indexInRowString++) {
 
-                if (cellIndex > 9) {
+                if (cellIndex > 10) {
                     throw new Error("Bad FEN: " + fen)
                 }
 
@@ -104,9 +107,7 @@ export class Position {
                     throw new Error(`Bad FEN: ${fen}, invalid figure: ${char}`)
                 }
 
-                let colName = ColumnNames[cellIndex]
-
-                this.board[colName][rowIndex] = {
+                this.board[cellIndex][rowIndex] = {
                     empty: false,
                     color: color,
                     figure: figure
@@ -115,7 +116,7 @@ export class Position {
                 cellIndex++
             }
 
-            if (cellIndex !== 10) {
+            if (cellIndex !== 11) {
                 throw new Error("Bad FEN: " + fen)
             }
         }
@@ -167,12 +168,11 @@ export class Position {
 
     getFen(): string {
         let positionStringArray: Array<string> = []
-
-        for (let rowIndex = 0; rowIndex <= 9; rowIndex++) {
+        for (let rowIndex = 1; rowIndex <= 10; rowIndex++) {
             let emptyCells = 0
             let rowString = ""
-            for (let columnName of ColumnNames) {
-                let cellInfo = this.board[columnName][rowIndex]
+            for (let x = 1; x <= 10; x++) {
+                let cellInfo = this.board[x][rowIndex]
                 if (cellInfo.empty) {
                     emptyCells++
                     continue
@@ -212,7 +212,7 @@ export class Position {
 
         let takeoverString = "-"
         if (this.takeoverCoord) {
-            takeoverString = this.takeoverCoord.col + this.takeoverCoord.row.toString()
+            takeoverString = Utils.coordinateToString(this.takeoverCoord)
         }
 
         return `${positionStringArray.join("/")} ${moving} ${castlingString} ${takeoverString} ${princessString} ${this.semiMove} ${this.moveNumber}`
@@ -220,7 +220,7 @@ export class Position {
 
     cellInfo(coord: CoordinateInterface): CellInfo {
         Utils.validateCoordinate(coord)
-        return this.board[coord.col][coord.row - 1]
+        return this.board[coord.x][coord.y]
     }
 
     isEmpty(c: CoordinateInterface) {
@@ -235,31 +235,34 @@ export class Position {
 
     move(from: CoordinateInterface, to: CoordinateInterface, extra?: ExtraMoveData): Position {
 
+        if (!extra) extra = {}
+
         let newPosition = this.clone()
         newPosition.queenJustEaten = false
-
         let fromCellInfo = newPosition.cellInfo(from)
         let toCellInfo = newPosition.cellInfo(to)
-
         let currentFigure = fromCellInfo.figure
 
         newPosition.takeoverCoord = null
         if (fromCellInfo.figure === Figure.Pawn) {
             newPosition.semiMove = 0
-            if (Math.abs(from.row - to.row) > 1) {
+            if (Math.abs(from.y - to.y) > 1) {
                 newPosition.takeoverCoord = {
-                    row: to.row,
-                    col: to.col
+                    y: to.y,
+                    x: to.x
                 }
             }
-            if (toCellInfo.empty && this.takeoverCoord && to.col !== from.col) {
+            if (toCellInfo.empty && this.takeoverCoord && to.x !== from.x) {
                 let takoverPawnCell = newPosition.cellInfo(this.takeoverCoord)
                 takoverPawnCell.empty = true
-                delete takoverPawnCell.color
-                delete takoverPawnCell.figure
+                takoverPawnCell.color = Color.None
+                takoverPawnCell.figure = Figure.None
             }
 
-            if (to.row === 10 || to.row === 1) {
+            if (to.y === 10 || to.y === 1) {
+                if (extra && extra.test && !extra.pawnTransform) {
+                    extra.pawnTransform = Figure.Queen
+                }
                 if (!extra || !extra.pawnTransform || AvailablePawnTransforms.indexOf(extra.pawnTransform) === -1) {
                     throw new Error("Pawn transform figure should be passed")
                 }
@@ -280,14 +283,13 @@ export class Position {
             } else {
                 let princessPosition = newPosition.findFigures(Figure.Princess, fromCellInfo.color!)[0]
                 let princessCellInfo = newPosition.cellInfo(princessPosition)
-                princessCellInfo.figure = Figure.Queen
-                if (from.row === princessPosition.row && from.col === princessPosition.col) {
+                if (from.y === princessPosition.y && from.x === princessPosition.x) {
                     currentFigure = Figure.Queen
+                } else {
+                    princessCellInfo.figure = Figure.Queen
                 }
             }
         }
-
-        this.queenJustEaten = false
 
         if (toCellInfo.figure === Figure.Queen && false === toCellInfo.empty && this.princessOnBoard(toCellInfo.color!)) {
             if (toCellInfo.color === Color.White) {
@@ -298,12 +300,68 @@ export class Position {
 
         if (toCellInfo.figure === Figure.King) {
             let princeCoord = this.findFigures(Figure.Prince, toCellInfo.color!)[0]
-            let princeCellInfo = newPosition.cellInfo(princeCoord)
-            princeCellInfo.figure = Figure.King
+            if (princeCoord) {
+                let princeCellInfo = newPosition.cellInfo(princeCoord)
+                princeCellInfo.figure = Figure.King
+            }
         }
 
         if (fromCellInfo.color === Color.Black) {
             newPosition.moveNumber++
+        }
+
+        /**
+         * Lost castling after Rook moves
+         */
+        if (fromCellInfo.figure === Figure.Rook) {
+            if (fromCellInfo.color === Color.White) {
+                if (from.x === 1) {
+                    newPosition.white000 = false
+                }
+                if (from.x === 10) {
+                    newPosition.white00 = false
+                }
+            } else {
+                if (from.x === 1) {
+                    newPosition.black000 = false
+                }
+                if (from.x === 10) {
+                    newPosition.black00 = false
+                }
+            }
+        }
+
+        /**
+         * Lost castling after King moves
+         */
+        if (fromCellInfo.figure === Figure.King) {
+            if (fromCellInfo.color === Color.White) {
+                newPosition.white00 = false
+                newPosition.white000 = false
+            } else {
+                newPosition.black00 = false
+                newPosition.black000 = false
+            }
+        }
+
+        /**
+         * Process castling move
+         */
+        if (fromCellInfo.figure === Figure.King && from.x === 6 && [3, 8].indexOf(to.x) !== -1) {
+            let rookFromCol = to.x === 3 ? 1 : 10
+            let toRookCol = to.x === 3 ? 4 : 7
+            let fromRookCellInfo = newPosition.cellInfo({y: from.y, x: rookFromCol})
+            if (fromRookCellInfo.figure !== Figure.Rook) {
+                throw new Error("Bad castling")
+            }
+            let toRookCellInfo = newPosition.cellInfo({y: from.y, x: toRookCol})
+            toRookCellInfo.empty = false
+            toRookCellInfo.figure = Figure.Rook
+            toRookCellInfo.color = this.moving
+
+            fromRookCellInfo.empty = true
+            fromRookCellInfo.color = Color.None
+            fromRookCellInfo.figure = Figure.None
         }
 
         toCellInfo.empty = false
@@ -313,22 +371,85 @@ export class Position {
         newPosition.moving = this.moving === Color.White ? Color.Black : Color.White
 
         fromCellInfo.empty = true
-        delete fromCellInfo.color
-        delete fromCellInfo.figure
-
-        newPosition.buildAvailableMoves()
+        fromCellInfo.color = Color.None
+        fromCellInfo.figure = Figure.None
 
         return newPosition
     }
 
+    getAvailableMoves(): Array<MoveInterface> {
+        if (!this.allAvailableMoves) {
+            this.buildAvailableMoves()
+        }
+        return this.allAvailableMoves
+    }
+
     private buildAvailableMoves() {
         this.allAvailableMoves = []
-        for (let row = 1; row <= 10; row++) {
-            for (let col of ColumnNames) {
-                let coord: CoordinateInterface = {row: row, col: col}
-                let availableMoves = this.baseAvailableMoves(coord)
+        let baseAvailableMoves = this.getBaseAvailableMoves()
+        let me = this.moving
+        let havePrince = this.princeOnBoard(me)
+        for (let baseAvailableMove of baseAvailableMoves) {
+            let newPosition = this.move(baseAvailableMove.from, baseAvailableMove.to, {test: true})
+            if (!havePrince && newPosition.isKingUnderAttack(me)) {
+                continue
+            }
+            this.allAvailableMoves.push({
+                from: baseAvailableMove.from,
+                to: baseAvailableMove.to
+            })
+        }
+
+        // 1) if only one available move
+        // 2) if this move only by king
+        // 3) if this move king eat queen
+        // 4) if quen covered by princesse
+        // then no available moves -> checkmate
+        if (this.allAvailableMoves.length === 1) {
+            let fromCoordinate = this.allAvailableMoves[0].from
+            let toCoordinate = this.allAvailableMoves[0].to
+            let fromCellInfo = this.cellInfo(fromCoordinate)
+            let opponent = Utils.changeColor(me)
+            let toCellInfo = this.cellInfo(toCoordinate)
+            if (fromCellInfo.figure === Figure.King
+                && toCellInfo.figure === Figure.Queen
+                && this.princessOnBoard(opponent)) {
+                let princesseCoord = this.findFigures(Figure.Princess, opponent)[0]
+                let availablePrincesseMoves = getPrincessMoves(princesseCoord, opponent, this, false)
+                for (let move of availablePrincesseMoves) {
+                    if (Utils.sameCoords(move, toCoordinate)) {
+                        this.allAvailableMoves = []
+                        break
+                    }
+                }
+
+            }
+        }
+    }
+
+    private getBaseAvailableMoves(): Array<MoveInterface> {
+        if (!this.baseAvailableMoves) {
+            this.buildBaseAvailableMoves()
+        }
+        return this.baseAvailableMoves
+    }
+
+    private buildBaseAvailableMoves() {
+        this.baseAvailableMoves = []
+        let me = this.moving
+        for (let y = 1; y <= 10; y++) {
+            for (let x = 1; x <= 10; x++) {
+                let coord: CoordinateInterface = {y: y, x: x}
+                let cellInfo = this.cellInfo(coord)
+                if (cellInfo.empty || cellInfo.color !== me) {
+                    continue
+                }
+
+                let availableMoves = this.baseAvailableMovesFromCoord(coord)
+
                 for (let availableMoveCoord of availableMoves) {
-                    this.allAvailableMoves.push({
+
+                    this.baseAvailableMoves.push({
                         from: coord,
                         to: availableMoveCoord
                     })
@@ -339,12 +460,11 @@ export class Position {
 
     findFigures(figure: Figure, color: Color): Array<CoordinateInterface> {
         let returnValue: Array<CoordinateInterface> = []
-        for (let column of ColumnNames) {
-            for (let i = 1; i <= 10; i++) {
-                let coordinate: CoordinateInterface = {col: column, row: i}
-                let cellInfo = this.cellInfo(coordinate)
+        for (let x = 1; x <= 10; x++) {
+            for (let y = 1; y <= 10; y++) {
+                let cellInfo = this.board[x][y]
                 if (!cellInfo.empty && cellInfo.color === color && cellInfo.figure === figure) {
-                    returnValue.push(coordinate)
+                    returnValue.push({x: x, y: y})
                 }
             }
         }
@@ -359,43 +479,57 @@ export class Position {
         return this.findFigures(Figure.Prince, color).length === 1
     }
 
-    bothPrincesOnBoard(): boolean {
-        return this.princeOnBoard(Color.White) && this.princeOnBoard(Color.Black)
-    }
-
     isKingUnderAttack(color: Color): boolean {
         let kingCoord = this.findFigures(Figure.King, color)[0]
-        for (let availableMove of this.allAvailableMoves) {
-            let cellInfo = this.cellInfo(availableMove.from)
-            if (cellInfo.color !== color && Utils.sameCoords(kingCoord, availableMove.to)) {
-                return true
+        if (color === this.moving) {
+            return this.isAttacked(kingCoord)
+        } else {
+            for (let availableMove of this.getBaseAvailableMoves()) {
+                let cellInfo = this.cellInfo(availableMove.from)
+                if (cellInfo.color !== color && Utils.sameCoords(kingCoord, availableMove.to)) {
+                    return true
+                }
             }
         }
+
         return false
+    }
+
+    isCheck(): boolean {
+        if (false === this.isKingUnderAttack(this.moving)) {
+            return false
+        }
+        if (this.princeOnBoard(this.moving)) {
+            return false
+        }
+        return true;
+    }
+
+    isCheckmate(): boolean {
+        return this.isCheck() && this.getAvailableMoves().length === 0
+    }
+
+    isStalemate(): boolean {
+        return !this.isCheck() && this.getAvailableMoves().length === 0
     }
 
     availableMoves(coord: CoordinateInterface): Array<CoordinateInterface> {
         let returnValue: Array<CoordinateInterface> = []
-        for (let availableMove of this.allAvailableMoves) {
-            if (availableMove.from.row === coord.row && availableMove.from.col === coord.col) {
+        for (let availableMove of this.getAvailableMoves()) {
+            if (availableMove.from.y === coord.y && availableMove.from.x === coord.x) {
                 returnValue.push(availableMove.to)
             }
         }
         return returnValue
     }
 
-    private baseAvailableMoves(coord: CoordinateInterface): Array<CoordinateInterface> {
+    private baseAvailableMovesFromCoord(coord: CoordinateInterface): Array<CoordinateInterface> {
         Utils.validateCoordinate(coord)
 
         let cellInfo = this.cellInfo(coord)
-        if (cellInfo.empty) {
-            return []
-        }
-        if (cellInfo.color !== this.moving) {
-            return []
-        }
 
         let returnValue: Array<CoordinateInterface> = []
+
 
         switch (cellInfo.figure) {
             case Figure.Pawn:
@@ -434,11 +568,22 @@ export class Position {
     canMove(from: CoordinateInterface, to: CoordinateInterface): boolean {
         let available = this.availableMoves(from)
         for (let availableCoord of available) {
-            if (availableCoord.row === to.row && availableCoord.col === to.col) {
+            if (Utils.sameCoords(to, availableCoord)) {
                 return true
             }
         }
         return false
+    }
+
+    canCastling(t: 2 | 3, color: Color): boolean {
+        if (color !== this.moving) {
+            return false;
+        }
+        if (t === 2) {
+            return this.moving === Color.White ? this.white00 : this.black00
+        } else {
+            return this.moving === Color.White ? this.white000 : this.black000
+        }
     }
 
     get takeover(): CoordinateInterface | null {
@@ -459,6 +604,64 @@ export class Position {
         }
         this.princessTransformJustRejected = rejected
         this.buildAvailableMoves()
+    }
+
+    getAttackedCoords(): Array<CoordinateInterface> {
+        if (this.attackedCoords) {
+            return this.attackedCoords
+        }
+        this.attackedCoords = []
+        let color = Utils.changeColor(this.moving)
+
+        for (let x = 1; x <= 10; x++) {
+            for (let y = 1; y <= 10; y++) {
+                let coord: CoordinateInterface = {x: x, y: y}
+                let cellInfo = this.cellInfo(coord)
+                if (cellInfo.empty || cellInfo.color !== color) {
+                    continue
+                }
+
+                let availableMoves = this.baseAvailableMovesFromCoord(coord)
+
+                for (let availableMoveCoord of availableMoves) {
+                    this.attackedCoords.push(availableMoveCoord)
+                }
+            }
+        }
+        return this.attackedCoords
+    }
+
+    isAttacked(coord: CoordinateInterface): boolean {
+        let attackedCoords = this.getAttackedCoords()
+        for (let c of attackedCoords) {
+            if (Utils.sameCoords(c, coord)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    printBoard(): string {
+        let text = "   +----------+\n"
+        for (let y = 10; y >= 1; y--) {
+            let line = ""
+            if (y !== 10) line += " "
+            line += y.toString()
+            line += " +"
+            for (let x = 1; x <= 10; x++) {
+                let cellInfo = this.cellInfo({x: x, y: y})
+                if (cellInfo.empty) {
+                    line += "."
+                } else {
+                    line += Utils.getFigureChar(cellInfo.figure, cellInfo.color)
+                }
+            }
+            line += "+\n"
+            text += line
+        }
+        text += "   +----------+\n"
+        text += "   +ABCDEFGHIJ+\n"
+        return text
     }
 
 }

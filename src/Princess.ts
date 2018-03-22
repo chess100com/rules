@@ -2,7 +2,7 @@ import {Position} from "./Position"
 import {CoordinateInterface, Color} from "./Shared"
 import {Utils} from "./Utils"
 
-export function getPrincessMoves(c: CoordinateInterface, color: Color, position: Position): Array<CoordinateInterface> {
+export function getPrincessMoves(c: CoordinateInterface, color: Color, position: Position, checkFriendlyPieces: boolean = true): Array<CoordinateInterface> {
     let directions: Array<Array<number>> = [[-1, -1], [1, 1], [1, -1], [-1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]
     let returnValue: Array<CoordinateInterface> = []
     for (let direction of directions) {
@@ -14,7 +14,7 @@ export function getPrincessMoves(c: CoordinateInterface, color: Color, position:
                 break
             }
             let cellInfo = position.cellInfo(newCoord)
-            if (!cellInfo.empty) {
+            if (!cellInfo.empty && checkFriendlyPieces) {
                 if (cellInfo.color !== color) {
                     returnValue.push(newCoord)
                 }

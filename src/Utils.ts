@@ -28,14 +28,14 @@ export class Utils {
     }
 
     static dCoord(c: CoordinateInterface, dx: number, dy: number): CoordinateInterface | null {
-        let colIndex = Utils.getColumnIndex(c.col) + dx
-        let row = c.row + dy
-        if (colIndex < 1 || colIndex > 10 || row < 1 || row > 10) {
+        let x = c.x + dx
+        let y = c.y + dy
+        if (x < 1 || x > 10 || y < 1 || y > 10) {
             return null
         }
         return {
-            col: Utils.getColumnName(colIndex),
-            row: row
+            x: x,
+            y: y
         }
     }
 
@@ -45,20 +45,19 @@ export class Utils {
         }
         let colName = coordinate.substr(0, 1)
         let rowIndex = parseInt(coordinate.substring(1))
-        if (isNaN(rowIndex) || rowIndex < 1 || rowIndex > 10 || ColumnNames.indexOf(colName) === -1) {
+        let colIndex = ColumnNames.indexOf(colName)
+        if (isNaN(rowIndex) || rowIndex < 1 || rowIndex > 10 || colIndex === -1) {
             throw new Error("Bad coordinate: " + coordinate)
         }
         return {
-            row: rowIndex,
-            col: colName
+            x: colIndex + 1,
+            y: rowIndex
         }
     }
 
-    static validateCoordinate(coordinate: CoordinateInterface) {
-        let rowIndex = coordinate.row
-        let colName = coordinate.col
-        if (isNaN(rowIndex) || rowIndex < 1 || rowIndex > 10 || ColumnNames.indexOf(colName) === -1) {
-            throw new Error("Bad coordinate: " + coordinate)
+    static validateCoordinate(c: CoordinateInterface) {
+        if (c.x < 1 || c.x > 10 || c.y < 1 || c.y > 10) {
+            throw new Error("Bad coordinate")
         }
     }
 
@@ -73,9 +72,17 @@ export class Utils {
         }
         throw new Error("Bad figure " + figure)
     }
-    
+
     static sameCoords(c1: CoordinateInterface, c2: CoordinateInterface) {
-        return c1.row === c2.row && c1.col === c2.col
+        return c1.x === c2.x && c1.y === c2.y
+    }
+
+    static changeColor(color: Color): Color {
+        return color === Color.Black ? Color.White : Color.Black
+    }
+
+    static coordinateToString(coordinate: CoordinateInterface): string {
+        return `${ColumnNames[coordinate.x - 1]}${coordinate.y}`;
     }
 
 }

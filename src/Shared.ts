@@ -1,16 +1,16 @@
 export const StartFen = "rnbcqksbnr/pppppppppp/10/10/10/10/10/10/PPPPPPPPPP/RNBCQKSBNR w KQkq - - 0 1"
 
 export enum Figure {
-    Pawn, Bishop, Knight, Rook, Queen, King, Prince, Princess
+    Pawn, Bishop, Knight, Rook, Queen, King, Prince, Princess, None
 }
 
 export enum Color {
-    White, Black
+    White, Black, None
 }
 
 export const ColorsNames: {[key: string]: Color} = {
     w: Color.White,
-    b: Color.Black
+    b: Color.Black,
 }
 
 export const FigureNames: {[key: string]: Figure} = {
@@ -26,40 +26,41 @@ export const FigureNames: {[key: string]: Figure} = {
 
 export interface CellInfo {
     empty: boolean
-    color?: Color
-    figure?: Figure
+    color: Color
+    figure: Figure
 }
 
-export interface BaseBoardInterface {[key: string]: Array<CellInfo>}
+export interface BaseBoardInterface {[key: number]: {[key: number]: CellInfo}}
 
 export interface BoardInterface extends BaseBoardInterface {
-    a: Array<CellInfo>
-    b: Array<CellInfo>
-    c: Array<CellInfo>
-    d: Array<CellInfo>
-    e: Array<CellInfo>
-    f: Array<CellInfo>
-    g: Array<CellInfo>
-    h: Array<CellInfo>
-    i: Array<CellInfo>
-    j: Array<CellInfo>
+    1: {},
+    2: {},
+    3: {},
+    4: {},
+    5: {},
+    6: {},
+    7: {},
+    8: {},
+    9: {},
+    10: {}
 }
 
 export interface CoordinateInterface {
-    row: number,
-    col: string
+    readonly x: number,
+    readonly y: number
 }
 
 export const ColumnNames: Array<string> = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
 
 export interface MoveInterface {
-    from: CoordinateInterface,
-    to: CoordinateInterface
+    readonly from: CoordinateInterface,
+    readonly to: CoordinateInterface
 }
 
 export interface ExtraMoveData {
     pawnTransform?: Figure
-    princessTransform?: boolean
+    princessTransform?: boolean,
+    test?: boolean
 }
 
 export const AvailablePawnTransforms: Array<Figure> = [Figure.Queen, Figure.Bishop, Figure.Knight, Figure.Rook]
