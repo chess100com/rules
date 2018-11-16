@@ -8,12 +8,12 @@ export enum Color {
     White, Black, None
 }
 
-export const ColorsNames: {[key: string]: Color} = {
+export const ColorsNames: { [key: string]: Color } = {
     w: Color.White,
     b: Color.Black,
 }
 
-export const FigureNames: {[key: string]: Figure} = {
+export const FigureNames: { [key: string]: Figure } = {
     R: Figure.Rook,
     N: Figure.Knight,
     B: Figure.Bishop,
@@ -30,7 +30,7 @@ export interface CellInfo {
     figure: Figure
 }
 
-export interface BaseBoardInterface {[key: number]: {[key: number]: CellInfo}}
+export interface BaseBoardInterface { [key: number]: { [key: number]: CellInfo } }
 
 export interface BoardInterface extends BaseBoardInterface {
     1: {},
@@ -45,6 +45,13 @@ export interface BoardInterface extends BaseBoardInterface {
     10: {}
 }
 
+/**
+ * Interface for coordinates on board
+ * Starts from 1, end with 10
+ * x: 1..10 (a..j)
+ * y: 1..10
+ * {x:2,y:2} it is "b2" coordinate
+ */
 export interface CoordinateInterface {
     readonly x: number,
     readonly y: number

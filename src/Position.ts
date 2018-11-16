@@ -641,6 +641,14 @@ export class Position {
         return false
     }
 
+    getMovingColor(): Color {
+        return this.moving
+    }
+
+    getMoveNumber(): number {
+        return this.moveNumber
+    }
+
     printBoard(): string {
         let text = "   +----------+\n"
         for (let y = 10; y >= 1; y--) {
