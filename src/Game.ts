@@ -66,7 +66,7 @@ export class Game {
 
     static fromPgn(pgn: string): Game {
         let lines = pgn.split("\n")
-
+        
         let game = Game.create()
         return game
     }
@@ -83,6 +83,10 @@ export class Game {
 
     getFen(): string {
         return this.position.getFen()
+    }
+
+    getPGN(): string {
+        return ""
     }
 
     /**
@@ -178,7 +182,7 @@ export class Game {
             returnValue = returnValue.concat("+")
         }*/
 
-        //return returnValue
+        // return returnValue
     }
 
     private getMoveFromAlias(position: Position, moveString: string): MoveInterface {
